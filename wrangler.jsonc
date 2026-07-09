@@ -1,8 +1,13 @@
 {
   "name": "la-esquina-app",
   "compatibility_date": "2026-07-08",
+  "main": "worker.js",
   "assets": {
     "directory": "./",
+    "binding": "ASSETS",
     "not_found_handling": "single-page-application"
-  }
+  },
+  "kv_namespaces": [
+    { "binding": "SYNC_KV", "id": "cce44dea5d0d4ebeb591353cf9be7779" }
+  ]
 }
