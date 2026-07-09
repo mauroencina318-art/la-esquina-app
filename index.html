@@ -1,0 +1,2358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+    <title>LA ESQUINA - Control de Vencimientos</title>
+
+    <!-- ===== PWA: instalable como app + apariencia nativa en el celular ===== -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a56db">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LA ESQUINA">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+    <style>
+        :root {
+            --azul-primario: #1a56db;
+            --azul-oscuro: #0e2a86;
+            --azul-claro: #3b82f6;
+            --azul-suave: #dbeafe;
+            --verde: #10b981;
+            --verde-suave: #d1fae5;
+            --amarillo: #f59e0b;
+            --amarillo-suave: #fef3c7;
+            --rojo: #ef4444;
+            --rojo-suave: #fee2e2;
+            --gris: #6b7280;
+            --gris-claro: #f3f4f6;
+            --blanco: #ffffff;
+            --sombra: 0 10px 40px rgba(26, 86, 219, 0.15);
+            --sombra-hover: 0 15px 50px rgba(26, 86, 219, 0.25);
+            --radio: 20px;
+            --radio-sm: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html { -webkit-text-size-adjust: 100%; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 50%, #eff6ff 100%);
+            min-height: 100vh;
+            color: #1e293b;
+            overscroll-behavior-y: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        input, textarea, .search-wrapper input { -webkit-user-select: text; user-select: text; }
+
+        button, .btn, .btn-icon, .page-btn { touch-action: manipulation; }
+
+        .header {
+            background: linear-gradient(135deg, var(--azul-oscuro) 0%, var(--azul-primario) 50%, var(--azul-claro) 100%);
+            padding: 25px 40px;
+            box-shadow: 0 8px 32px rgba(26, 86, 219, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom-left-radius: 30px;
+            border-bottom-right-radius: 30px;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 55px; height: 55px;
+            background: var(--blanco);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--azul-primario);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .logo-text h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--blanco);
+            letter-spacing: 2px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .logo-text span {
+            font-size: 12px;
+            color: rgba(255,255,255,0.8);
+            font-weight: 400;
+            letter-spacing: 1px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .stat-pill {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 50px;
+            color: var(--blanco);
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .stat-pill:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        .bell-btn {
+            position: relative;
+            width: 42px; height: 42px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: var(--blanco);
+            font-size: 17px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .bell-btn:hover { background: rgba(255,255,255,0.25); }
+        .bell-btn.ringing { animation: bellRing 0.6s ease; }
+
+        @keyframes bellRing {
+            0%, 100% { transform: rotate(0); }
+            20% { transform: rotate(15deg); }
+            40% { transform: rotate(-13deg); }
+            60% { transform: rotate(9deg); }
+            80% { transform: rotate(-6deg); }
+        }
+
+        .bell-badge {
+            position: absolute;
+            top: -2px; right: -2px;
+            min-width: 18px; height: 18px;
+            padding: 0 4px;
+            border-radius: 50%;
+            background: var(--rojo);
+            color: var(--blanco);
+            font-size: 10px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--azul-oscuro);
+        }
+
+        .sync-indicator {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: var(--verde);
+            animation: pulse 2s infinite;
+            display: inline-block;
+        }
+
+        .sync-indicator.offline {
+            background: var(--rojo);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 40px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--blanco);
+            border-radius: var(--radio);
+            padding: 25px;
+            box-shadow: var(--sombra);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--sombra-hover);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 5px;
+        }
+
+        .stat-card.total::before { background: linear-gradient(90deg, var(--azul-primario), var(--azul-claro)); }
+        .stat-card.ok::before { background: linear-gradient(90deg, var(--verde), #34d399); }
+        .stat-card.warning::before { background: linear-gradient(90deg, var(--amarillo), #fbbf24); }
+        .stat-card.danger::before { background: linear-gradient(90deg, var(--rojo), #f87171); }
+
+        .stat-card-icon {
+            width: 50px; height: 50px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 15px;
+        }
+
+        .stat-card.total .stat-card-icon { background: var(--azul-suave); color: var(--azul-primario); }
+        .stat-card.ok .stat-card-icon { background: var(--verde-suave); color: var(--verde); }
+        .stat-card.warning .stat-card-icon { background: var(--amarillo-suave); color: var(--amarillo); }
+        .stat-card.danger .stat-card-icon { background: var(--rojo-suave); color: var(--rojo); }
+
+        .stat-card h3 { font-size: 32px; font-weight: 700; margin-bottom: 5px; }
+        .stat-card.total h3 { color: var(--azul-primario); }
+        .stat-card.ok h3 { color: var(--verde); }
+        .stat-card.warning h3 { color: var(--amarillo); }
+        .stat-card.danger h3 { color: var(--rojo); }
+        .stat-card p { font-size: 14px; color: var(--gris); font-weight: 500; }
+
+        .control-panel {
+            background: var(--blanco);
+            border-radius: var(--radio);
+            padding: 30px;
+            box-shadow: var(--sombra);
+            margin-bottom: 30px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .panel-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--azul-oscuro);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .panel-title i { color: var(--azul-primario); font-size: 24px; }
+
+        .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 50px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--azul-primario), var(--azul-claro));
+            color: var(--blanco);
+            box-shadow: 0 4px 15px rgba(26, 86, 219, 0.3);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(26, 86, 219, 0.4); }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--verde), #34d399);
+            color: var(--blanco);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4); }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--azul-primario);
+            border: 2px solid var(--azul-primario);
+        }
+        .btn-outline:hover { background: var(--azul-primario); color: var(--blanco); }
+
+        .btn-sync {
+            background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+            color: var(--blanco);
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+        }
+        .btn-sync:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4); }
+
+        .filters-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .filter-group { position: relative; }
+
+        .filter-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--gris);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-input, .filter-select {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 50px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            color: #1e293b;
+            transition: all 0.3s ease;
+            background: var(--blanco);
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        .filter-input:focus, .filter-select:focus {
+            border-color: var(--azul-primario);
+            box-shadow: 0 0 0 4px rgba(26, 86, 219, 0.1);
+        }
+
+        .filter-group .chevron {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--azul-primario);
+            font-size: 12px;
+            pointer-events: none;
+            margin-top: 12px;
+        }
+
+        .search-wrapper { position: relative; }
+        .search-wrapper i {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--azul-primario);
+            font-size: 18px;
+        }
+        .search-wrapper .filter-input { padding-left: 50px; }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: var(--radio-sm);
+            border: 1px solid #e2e8f0;
+        }
+
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .products-table thead {
+            background: linear-gradient(135deg, var(--azul-oscuro), var(--azul-primario));
+        }
+
+        .products-table th {
+            padding: 16px 20px;
+            text-align: left;
+            color: var(--blanco);
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .products-table th:first-child { border-top-left-radius: var(--radio-sm); }
+        .products-table th:last-child { border-top-right-radius: var(--radio-sm); }
+
+        .products-table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+
+        .products-table tbody tr { transition: all 0.2s ease; }
+        .products-table tbody tr:hover { background: #f8fafc; transform: scale(1.002); }
+        .products-table tbody tr:last-child td { border-bottom: none; }
+        .products-table tbody tr:last-child td:first-child { border-bottom-left-radius: var(--radio-sm); }
+        .products-table tbody tr:last-child td:last-child { border-bottom-right-radius: var(--radio-sm); }
+
+        .product-name { font-weight: 600; color: #1e293b; }
+        .product-code { font-size: 12px; color: var(--gris); font-weight: 400; }
+
+        .badge {
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-ok { background: var(--verde-suave); color: var(--verde); }
+        .badge-warning { background: var(--amarillo-suave); color: #92400e; }
+        .badge-danger { background: var(--rojo-suave); color: var(--rojo); }
+
+        .days-left { font-weight: 700; font-size: 16px; }
+        .days-left.ok { color: var(--verde); }
+        .days-left.warning { color: var(--amarillo); }
+        .days-left.danger { color: var(--rojo); }
+
+        .action-btns { display: flex; gap: 8px; }
+
+        .btn-icon {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+
+        .btn-icon-edit { background: var(--azul-suave); color: var(--azul-primario); }
+        .btn-icon-edit:hover { background: var(--azul-primario); color: var(--blanco); }
+        .btn-icon-delete { background: var(--rojo-suave); color: var(--rojo); }
+        .btn-icon-delete:hover { background: var(--rojo); color: var(--blanco); }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            padding: 20px;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--blanco);
+            border-radius: var(--radio);
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+            animation: modalIn 0.3s ease;
+        }
+
+        .modal-wide { max-width: 700px; }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: translateY(-30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .modal-header {
+            padding: 25px 30px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--azul-oscuro);
+        }
+
+        .modal-close {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: var(--gris-claro);
+            color: var(--gris);
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover { background: var(--rojo-suave); color: var(--rojo); }
+
+        .modal-body { padding: 25px 30px; }
+
+        .form-group { margin-bottom: 20px; }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gris);
+            margin-bottom: 8px;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 14px 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 50px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: var(--azul-primario);
+            box-shadow: 0 0 0 4px rgba(26, 86, 219, 0.1);
+        }
+
+        /* Switch tipo iOS para configuraciones */
+        .switch { position: relative; display: inline-block; width: 48px; height: 28px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .switch-slider {
+            position: absolute; cursor: pointer; inset: 0;
+            background-color: #cbd5e1; border-radius: 34px;
+            transition: 0.25s;
+        }
+        .switch-slider::before {
+            content: ""; position: absolute;
+            height: 22px; width: 22px; left: 3px; bottom: 3px;
+            background-color: white; border-radius: 50%;
+            transition: 0.25s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .switch input:checked + .switch-slider { background-color: var(--azul-primario); }
+        .switch input:checked + .switch-slider::before { transform: translateX(20px); }
+
+        /* Lista de productos por vencer dentro del modal de alertas */
+        .alert-item {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 10px; padding: 12px 14px; border-radius: 14px;
+            background: var(--gris-claro); margin-bottom: 8px;
+        }
+        .alert-item.danger { background: var(--rojo-suave); }
+        .alert-item.warning { background: var(--amarillo-suave); }
+        .alert-item-name { font-weight: 600; font-size: 14px; }
+        .alert-item-days { font-size: 12px; color: var(--gris); }
+        .alert-empty { text-align: center; padding: 30px 10px; color: var(--gris); }
+        .alert-empty i { font-size: 28px; display: block; margin-bottom: 10px; color: var(--verde); }
+
+        .modal-footer {
+            padding: 20px 30px;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .import-zone {
+            border: 3px dashed var(--azul-claro);
+            border-radius: var(--radio);
+            padding: 50px 30px;
+            text-align: center;
+            background: var(--azul-suave);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .import-zone:hover, .import-zone.dragover {
+            border-color: var(--azul-primario);
+            background: #bfdbfe;
+            transform: scale(1.01);
+        }
+
+        .import-zone i { font-size: 48px; color: var(--azul-primario); margin-bottom: 15px; }
+        .import-zone h3 { font-size: 18px; color: var(--azul-oscuro); margin-bottom: 8px; }
+        .import-zone p { font-size: 14px; color: var(--gris); }
+        .import-zone input[type="file"] { display: none; }
+
+        .sync-section {
+            background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+            border-radius: var(--radio);
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 2px solid #c4b5fd;
+        }
+
+        .sync-section h3 {
+            color: #5b21b6;
+            font-size: 16px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sync-code-display {
+            background: var(--blanco);
+            border: 2px solid #c4b5fd;
+            border-radius: 50px;
+            padding: 14px 24px;
+            font-size: 24px;
+            font-weight: 700;
+            color: #5b21b6;
+            text-align: center;
+            letter-spacing: 4px;
+            font-family: 'Courier New', monospace;
+            margin-bottom: 15px;
+        }
+
+        .sync-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .sync-input-group input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #c4b5fd;
+            border-radius: 50px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            letter-spacing: 3px;
+            outline: none;
+            text-transform: uppercase;
+        }
+
+        .sync-input-group input:focus {
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
+        }
+
+        .sync-info {
+            font-size: 13px;
+            color: #7c3aed;
+            line-height: 1.6;
+        }
+
+        .sync-info i { margin-right: 6px; }
+
+        .sync-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px 16px;
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .sync-status.connected { background: #d1fae5; color: var(--verde); }
+        .sync-status.disconnected { background: #fee2e2; color: var(--rojo); }
+        .sync-status.syncing { background: #dbeafe; color: var(--azul-primario); }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-state i { font-size: 64px; color: #cbd5e1; margin-bottom: 20px; }
+        .empty-state h3 { font-size: 20px; color: var(--azul-oscuro); margin-bottom: 10px; }
+        .empty-state p { color: var(--gris); font-size: 14px; }
+
+        .toast-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            padding: 16px 24px;
+            border-radius: 50px;
+            color: var(--blanco);
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            animation: toastIn 0.4s ease;
+            min-width: 280px;
+        }
+
+        @keyframes toastIn {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast.success { background: linear-gradient(135deg, var(--verde), #34d399); }
+        .toast.error { background: linear-gradient(135deg, var(--rojo), #f87171); }
+        .toast.info { background: linear-gradient(135deg, var(--azul-primario), var(--azul-claro)); }
+        .toast.sync { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+
+        @media (max-width: 1024px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .filters-row { grid-template-columns: 1fr; }
+        }
+
+        /* ===== BARRA DE NAVEGACION INFERIOR (estilo app nativa) ===== */
+        .bottom-nav {
+            display: none;
+            position: fixed;
+            left: 0; right: 0; bottom: 0;
+            z-index: 1100;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(16px);
+            border-top: 1px solid rgba(26,86,219,0.1);
+            box-shadow: 0 -8px 30px rgba(26,86,219,0.15);
+            align-items: center;
+            justify-content: space-around;
+            padding: 8px 6px calc(8px + env(safe-area-inset-bottom)) 6px;
+            border-top-left-radius: 22px;
+            border-top-right-radius: 22px;
+        }
+
+        .bottom-nav-item {
+            position: relative;
+            background: none; border: none;
+            display: flex; flex-direction: column; align-items: center; gap: 3px;
+            color: var(--gris); font-family: 'Poppins', sans-serif;
+            font-size: 10px; font-weight: 600;
+            padding: 6px 10px; border-radius: 14px;
+            cursor: pointer; transition: all 0.2s ease;
+        }
+
+        .bottom-nav-item i { font-size: 18px; }
+        .bottom-nav-item.active { color: var(--azul-primario); background: var(--azul-suave); }
+
+        .nav-badge {
+            position: absolute; top: 0; right: 2px;
+            min-width: 15px; height: 15px; padding: 0 3px;
+            border-radius: 50%; background: var(--rojo); color: var(--blanco);
+            font-size: 9px; display: flex; align-items: center; justify-content: center;
+        }
+
+        .bottom-nav-fab {
+            width: 54px; height: 54px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--verde), #34d399);
+            border: 4px solid #eff6ff;
+            color: var(--blanco); font-size: 20px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 8px 20px rgba(16,185,129,0.45);
+            cursor: pointer; transform: translateY(-14px);
+            transition: transform 0.15s ease;
+        }
+        .bottom-nav-fab:active { transform: translateY(-14px) scale(0.92); }
+
+        @media (max-width: 768px) {
+            .container { padding: 16px; padding-bottom: 100px; }
+            .header {
+                padding: 16px 18px calc(16px + env(safe-area-inset-top)) 18px;
+                border-radius: 0;
+                position: sticky;
+            }
+            .header-content { flex-direction: column; gap: 12px; align-items: flex-start; }
+            .header-stats { width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; scrollbar-width: none; }
+            .header-stats::-webkit-scrollbar { display: none; }
+            .stat-pill { flex-shrink: 0; }
+            .logo-icon { width: 46px; height: 46px; font-size: 20px; }
+            .logo-text h1 { font-size: 22px; letter-spacing: 1px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .panel-header { flex-direction: column; align-items: flex-start; }
+
+            /* En mobile los botones de accion se manejan desde la barra inferior */
+            .btn-group { display: none; }
+
+            .products-table { font-size: 12px; }
+            .products-table th, .products-table td { padding: 12px 10px; }
+            .sync-input-group { flex-direction: column; }
+            .sync-columns { grid-template-columns: 1fr !important; }
+
+            .bottom-nav { display: flex; }
+
+            /* Tabla de productos como tarjetas en mobile */
+            .products-table thead { display: none; }
+            .products-table, .products-table tbody, .products-table tr, .products-table td { display: block; width: 100%; }
+            .products-table tr {
+                background: var(--blanco);
+                border-radius: 16px;
+                margin-bottom: 12px;
+                padding: 6px 4px;
+                box-shadow: 0 4px 16px rgba(26,86,219,0.08);
+            }
+            .products-table td {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                padding: 10px 14px;
+                border: none;
+                text-align: right;
+            }
+            .products-table td::before {
+                content: attr(data-label);
+                font-size: 11px;
+                font-weight: 700;
+                color: var(--gris);
+                text-align: left;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            .products-table td:first-child { justify-content: flex-end; }
+            .products-table td:first-child::before { content: ''; }
+            .products-table .product-name, .products-table .product-code { text-align: right; }
+            .products-table .action-btns { justify-content: flex-end; }
+        }
+
+        @media (min-width: 769px) {
+            .bottom-nav { display: none !important; }
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--azul-claro); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--azul-primario); }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-fill.ok { background: linear-gradient(90deg, var(--verde), #34d399); }
+        .progress-fill.warning { background: linear-gradient(90deg, var(--amarillo), #fbbf24); }
+        .progress-fill.danger { background: linear-gradient(90deg, var(--rojo), #f87171); }
+
+        .custom-checkbox {
+            width: 22px; height: 22px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            color: var(--blanco);
+            font-size: 12px;
+        }
+
+        .custom-checkbox.checked { background: var(--azul-primario); border-color: var(--azul-primario); }
+
+        .category-tag {
+            padding: 4px 12px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--azul-suave);
+            color: var(--azul-primario);
+        }
+
+        .chart-section {
+            background: var(--blanco);
+            border-radius: var(--radio);
+            padding: 25px;
+            box-shadow: var(--sombra);
+            margin-bottom: 30px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--azul-oscuro);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chart-title i { color: var(--azul-primario); }
+
+        .chart-wrapper {
+            position: relative;
+            height: 320px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chart-wrapper canvas {
+            max-height: 100% !important;
+            max-width: 100% !important;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 25px;
+        }
+
+        .page-btn {
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            border: 2px solid #e2e8f0;
+            background: var(--blanco);
+            color: var(--gris);
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .page-btn:hover, .page-btn.active {
+            background: var(--azul-primario);
+            border-color: var(--azul-primario);
+            color: var(--blanco);
+        }
+
+        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .sync-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+    </style>
+<base target="_blank">
+</head>
+<body>
+
+    <!-- ===== HEADER ===== -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i class="fas fa-store"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>LA ESQUINA</h1>
+                    <span>Sistema de Control de Vencimientos</span>
+                </div>
+            </div>
+            <div class="header-stats">
+                <div class="stat-pill" id="syncPill" style="cursor: pointer;" onclick="openModal('sync')" title="Clic para sincronizar">
+                    <span class="sync-indicator" id="syncIndicator"></span>
+                    <span id="syncText">Sincronizado</span>
+                </div>
+                <div class="stat-pill">
+                    <i class="fas fa-calendar-day"></i>
+                    <span id="headerDate">--</span>
+                </div>
+                <div class="stat-pill">
+                    <i class="fas fa-clock"></i>
+                    <span id="headerTime">--</span>
+                </div>
+                <button class="bell-btn" id="bellBtn" onclick="openModal('alerts')" title="Alertas de vencimiento">
+                    <i class="fas fa-bell"></i>
+                    <span class="bell-badge" id="bellBadge" style="display:none;">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- ===== TARJETAS RESUMEN ===== -->
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-card-icon"><i class="fas fa-boxes"></i></div>
+                <h3 id="statTotal">0</h3>
+                <p>Productos Totales</p>
+            </div>
+            <div class="stat-card ok">
+                <div class="stat-card-icon"><i class="fas fa-check-circle"></i></div>
+                <h3 id="statOk">0</h3>
+                <p>En Buen Estado</p>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-card-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <h3 id="statWarning">0</h3>
+                <p>Por Vencer (7 dias)</p>
+            </div>
+            <div class="stat-card danger">
+                <div class="stat-card-icon"><i class="fas fa-skull-crossbones"></i></div>
+                <h3 id="statDanger">0</h3>
+                <p>Vencidos</p>
+            </div>
+        </div>
+
+        <!-- ===== GRAFICO (CENTRADO) ===== -->
+        <div class="chart-section">
+            <div class="chart-header">
+                <div class="chart-title">
+                    <i class="fas fa-chart-pie"></i>
+                    Distribucion de Productos
+                </div>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+
+        <!-- ===== PANEL DE CONTROL ===== -->
+        <div class="control-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <i class="fas fa-clipboard-list"></i>
+                    Listado de Productos
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="openModal('add')">
+                        <i class="fas fa-plus"></i> Agregar
+                    </button>
+                    <button class="btn btn-primary" onclick="openModal('import')">
+                        <i class="fas fa-file-excel"></i> Importar Excel
+                    </button>
+                    <button class="btn btn-outline" onclick="exportToPDF()">
+                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                    </button>
+                    <button class="btn btn-sync" onclick="openModal('sync')">
+                        <i class="fas fa-sync-alt"></i> Sincronizar
+                    </button>
+                </div>
+            </div>
+
+            <!-- ===== FILTROS ===== -->
+            <div class="filters-row">
+                <div class="filter-group search-wrapper">
+                    <label>Buscar Producto</label>
+                    <i class="fas fa-search"></i>
+                    <input type="text" class="filter-input" id="searchInput" placeholder="Escribi al menos 3 letras..." oninput="handleSearch()">
+                </div>
+                <div class="filter-group">
+                    <label>Estado</label>
+                    <select class="filter-select" id="filterStatus" onchange="applyFilters()">
+                        <option value="">Todos</option>
+                        <option value="ok">Buen Estado</option>
+                        <option value="warning">Por Vencer</option>
+                        <option value="danger">Vencido</option>
+                    </select>
+                    <i class="fas fa-chevron-down chevron"></i>
+                </div>
+                <div class="filter-group">
+                    <label>Categoria</label>
+                    <select class="filter-select" id="filterCategory" onchange="applyFilters()">
+                        <option value="">Todas</option>
+                    </select>
+                    <i class="fas fa-chevron-down chevron"></i>
+                </div>
+                <div class="filter-group">
+                    <label>Ordenar por</label>
+                    <select class="filter-select" id="sortBy" onchange="applyFilters()">
+                        <option value="days">Dias Restantes</option>
+                        <option value="name">Nombre</option>
+                        <option value="date">Fecha Vencimiento</option>
+                        <option value="category">Categoria</option>
+                    </select>
+                    <i class="fas fa-chevron-down chevron"></i>
+                </div>
+            </div>
+
+            <!-- ===== TABLA ===== -->
+            <div class="table-container" id="tableContainer">
+                <div class="empty-state" id="emptyState">
+                    <i class="fas fa-box-open"></i>
+                    <h3>No hay productos cargados</h3>
+                    <p>Importa un archivo Excel o agrega productos manualmente para comenzar.</p>
+                </div>
+                <table class="products-table" id="productsTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+                            <th>Producto</th>
+                            <th>Categoria</th>
+                            <th>Vencimiento</th>
+                            <th>Dias Rest.</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- ===== PAGINACION ===== -->
+            <div class="pagination" id="pagination" style="display: none;">
+                <button class="page-btn" onclick="changePage(-1)" id="btnPrev"><i class="fas fa-chevron-left"></i></button>
+                <div id="pageNumbers"></div>
+                <button class="page-btn" onclick="changePage(1)" id="btnNext"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL AGREGAR/EDITAR ===== -->
+    <div class="modal-overlay" id="modalProduct">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="modalTitle"><i class="fas fa-plus-circle" style="color: var(--azul-primario); margin-right: 10px;"></i>Agregar Producto</h2>
+                <button class="modal-close" onclick="closeModal('modalProduct')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nombre del Producto</label>
+                    <input type="text" id="prodName" placeholder="Ej: Coca Cola 2.25L">
+                </div>
+                <div class="form-group">
+                    <label>Codigo / SKU</label>
+                    <input type="text" id="prodCode" placeholder="Ej: COC-2250">
+                </div>
+                <div class="form-group">
+                    <label>Categoria</label>
+                    <select id="prodCategory">
+                        <option value="Bebidas">Bebidas</option>
+                        <option value="Snacks">Snacks</option>
+                        <option value="Golosinas">Golosinas</option>
+                        <option value="Lacteos">Lacteos</option>
+                        <option value="Panaderia">Panaderia</option>
+                        <option value="Congelados">Congelados</option>
+                        <option value="Limpieza">Limpieza</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Fecha de Vencimiento</label>
+                    <input type="date" id="prodDate">
+                </div>
+                <div class="form-group">
+                    <label>Stock / Cantidad</label>
+                    <input type="number" id="prodStock" placeholder="Ej: 15" min="0">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('modalProduct')">Cancelar</button>
+                <button class="btn btn-primary" onclick="saveProduct()">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL IMPORTAR ===== -->
+    <div class="modal-overlay" id="modalImport">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-file-excel" style="color: var(--verde); margin-right: 10px;"></i>Importar desde Excel</h2>
+                <button class="modal-close" onclick="closeModal('modalImport')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="import-zone" id="importZone" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Arrastra tu archivo Excel aqui</h3>
+                    <p>O hace clic para seleccionar un archivo (.xlsx, .xls, .csv)</p>
+                    <p style="margin-top: 15px; font-size: 12px; color: var(--azul-primario); font-weight: 600;">
+                        <i class="fas fa-info-circle"></i> El Excel debe tener columnas: Nombre, Codigo, Categoria, Vencimiento, Stock
+                    </p>
+                </div>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('modalImport')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL SINCRONIZACION ===== -->
+    <div class="modal-overlay" id="modalSync">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h2><i class="fas fa-sync-alt" style="color: #8b5cf6; margin-right: 10px;"></i>Sincronizacion entre Dispositivos</h2>
+                <button class="modal-close" onclick="closeModal('modalSync')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="sync-columns">
+                    <div>
+                        <div class="sync-section">
+                            <h3><i class="fas fa-broadcast-tower"></i> Tu Codigo de Sala</h3>
+                            <div class="sync-code-display" id="syncCodeDisplay">----</div>
+                            <p class="sync-info">
+                                <i class="fas fa-info-circle"></i> Comparti este codigo con otra computadora para sincronizar los datos en tiempo real.
+                            </p>
+                            <div class="sync-status connected" id="syncStatusLocal">
+                                <i class="fas fa-wifi"></i> Sincronizacion local activa
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="sync-section">
+                            <h3><i class="fas fa-plug"></i> Conectar a otra Sala</h3>
+                            <div class="sync-input-group">
+                                <input type="text" id="joinCodeInput" placeholder="CODIGO" maxlength="4">
+                                <button class="btn btn-sync" onclick="joinRoom()">
+                                    <i class="fas fa-link"></i> Conectar
+                                </button>
+                            </div>
+                            <p class="sync-info">
+                                <i class="fas fa-lightbulb"></i> Ingresa el codigo de 4 letras de otra computadora para unirte a su sala y sincronizar datos.
+                            </p>
+                            <div class="sync-status disconnected" id="syncStatusRemote">
+                                <i class="fas fa-unlink"></i> Sin conexion remota
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sync-section" style="margin-top: 20px;">
+                    <h3><i class="fas fa-exchange-alt"></i> Sincronizacion Manual (Sin Internet)</h3>
+                    <p class="sync-info" style="margin-bottom: 15px;">
+                        <i class="fas fa-info-circle"></i> Si las computadoras no estan en la misma red, usa este metodo: copia el codigo de abajo, pasalo por WhatsApp/email a la otra PC, y que la pegue en "Importar Codigo".
+                    </p>
+                    <div class="sync-input-group">
+                        <button class="btn btn-primary" onclick="generateSyncCode()" style="white-space: nowrap;">
+                            <i class="fas fa-code"></i> Generar Codigo
+                        </button>
+                        <button class="btn btn-success" onclick="copySyncCode()" style="white-space: nowrap;">
+                            <i class="fas fa-copy"></i> Copiar
+                        </button>
+                    </div>
+                    <div class="sync-code-display" id="manualSyncCode" style="font-size: 14px; letter-spacing: 1px; word-break: break-all; min-height: 80px; display: flex; align-items: center; justify-content: center;">
+                        Hace clic en "Generar Codigo" para crear un codigo de sincronizacion
+                    </div>
+                    <div class="sync-input-group" style="margin-top: 15px;">
+                        <input type="text" id="importSyncCode" placeholder="Pega aqui el codigo de otra PC..." style="font-size: 12px; letter-spacing: 0;">
+                        <button class="btn btn-success" onclick="importSyncCode()">
+                            <i class="fas fa-download"></i> Importar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('modalSync')">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODAL: ALERTAS Y NOTIFICACIONES ===== -->
+    <div class="modal-overlay" id="modalAlerts">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-bell"></i> Alertas de Vencimiento</h2>
+                <button class="modal-close" onclick="closeModal('modalAlerts')"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Avisarme cuando falten</label>
+                    <select id="alertThreshold" onchange="saveAlertSettings()">
+                        <option value="3">3 dias o menos</option>
+                        <option value="7">7 dias o menos</option>
+                        <option value="15">15 dias o menos</option>
+                        <option value="30">30 dias o menos</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
+                    <div>
+                        <label style="margin-bottom:2px; display:block;">Sonido al abrir la app</label>
+                        <span style="font-size:12px; color: var(--gris);">Suena si hay productos por vencer</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="alertSoundToggle" checked onchange="saveAlertSettings()">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+
+                <div class="form-group" style="display:flex; align-items:center; justify-content:space-between; gap: 10px;">
+                    <div>
+                        <label style="margin-bottom:2px; display:block;">Notificaciones del celular</label>
+                        <span style="font-size:12px; color: var(--gris);" id="notifStatusText">No activadas</span>
+                    </div>
+                    <button class="btn btn-primary" id="btnEnableNotif" onclick="requestNotificationPermission()">
+                        <i class="fas fa-bell"></i> Activar
+                    </button>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid var(--gris-claro); margin: 10px 0 15px;">
+
+                <div id="alertsList"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="testAlertSound()"><i class="fas fa-volume-high"></i> Probar sonido</button>
+                <button class="btn btn-primary" onclick="closeModal('modalAlerts')">Listo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TOAST CONTAINER ===== -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ===== BARRA DE NAVEGACION INFERIOR (solo mobile / app instalada) ===== -->
+    <nav class="bottom-nav" id="bottomNav">
+        <button class="bottom-nav-item active" onclick="scrollToProducts(this)">
+            <i class="fas fa-boxes"></i>
+            <span>Productos</span>
+        </button>
+        <button class="bottom-nav-item" onclick="openModal('alerts'); setBottomNavActive(this)">
+            <i class="fas fa-bell"></i>
+            <span>Alertas</span>
+            <span class="nav-badge" id="navBadge" style="display:none;">0</span>
+        </button>
+        <button class="bottom-nav-fab" onclick="openModal('add')" title="Agregar producto">
+            <i class="fas fa-plus"></i>
+        </button>
+        <button class="bottom-nav-item" onclick="openModal('import'); setBottomNavActive(this)">
+            <i class="fas fa-file-excel"></i>
+            <span>Importar</span>
+        </button>
+        <button class="bottom-nav-item" onclick="openModal('sync'); setBottomNavActive(this)">
+            <i class="fas fa-sync-alt"></i>
+            <span>Sync</span>
+        </button>
+    </nav>
+
+    <script>
+        // ===== DATOS =====
+        let products = JSON.parse(localStorage.getItem('laEsquinaProducts')) || [];
+        let filteredProducts = [];
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        let editingId = null;
+        let chartInstance = null;
+        let broadcastChannel = null;
+        let roomCode = localStorage.getItem('laEsquinaRoomCode') || generateRoomCode();
+        let isConnected = false;
+
+        // ===== ALERTAS Y NOTIFICACIONES =====
+        let alertSettings = JSON.parse(localStorage.getItem('laEsquinaAlertSettings')) || { threshold: 7, sound: true };
+        let audioCtx = null;
+
+        // ===== INICIALIZACION =====
+        document.addEventListener('DOMContentLoaded', function() {
+            updateClock();
+            setInterval(updateClock, 1000);
+            updateCategories();
+            applyFilters();
+            updateStats();
+            updateBellBadge();
+            updateChart();
+            initSync();
+
+            document.getElementById('alertThreshold').value = alertSettings.threshold;
+            document.getElementById('alertSoundToggle').checked = alertSettings.sound;
+            updateNotifStatusText();
+            updateBellBadge();
+            // Pequeno delay para que la UI ya este pintada antes de sonar la alerta
+            setTimeout(() => checkExpiryAlerts(false), 900);
+            // Mientras la app siga abierta, revisa de nuevo cada 30 min (por si cruza medianoche)
+            setInterval(() => checkExpiryAlerts(false), 30 * 60 * 1000);
+
+            // Drag & Drop
+            const importZone = document.getElementById('importZone');
+            importZone.addEventListener('dragover', (e) => { e.preventDefault(); importZone.classList.add('dragover'); });
+            importZone.addEventListener('dragleave', () => importZone.classList.remove('dragover'));
+            importZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                importZone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length) processFile(files[0]);
+            });
+        });
+
+        // ===== SERVICE WORKER (instalacion como app + funcionamiento offline) =====
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js').catch(() => {});
+            });
+        }
+
+        // ===== ALERTAS: sonido y notificaciones =====
+        function saveAlertSettings() {
+            alertSettings.threshold = parseInt(document.getElementById('alertThreshold').value);
+            alertSettings.sound = document.getElementById('alertSoundToggle').checked;
+            localStorage.setItem('laEsquinaAlertSettings', JSON.stringify(alertSettings));
+            renderAlertsList();
+            updateBellBadge();
+        }
+
+        function playAlertSound() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const notes = [880, 659.25, 880];
+                notes.forEach((freq, i) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    const start = audioCtx.currentTime + i * 0.18;
+                    gain.gain.setValueAtTime(0, start);
+                    gain.gain.linearRampToValueAtTime(0.25, start + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.17);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(start);
+                    osc.stop(start + 0.18);
+                });
+            } catch (e) { /* audio no disponible */ }
+        }
+
+        function testAlertSound() {
+            playAlertSound();
+            const bell = document.getElementById('bellBtn');
+            bell.classList.add('ringing');
+            setTimeout(() => bell.classList.remove('ringing'), 600);
+        }
+
+        function requestNotificationPermission() {
+            if (!('Notification' in window)) {
+                showToast('Este navegador no soporta notificaciones', 'error');
+                return;
+            }
+            Notification.requestPermission().then((perm) => {
+                updateNotifStatusText();
+                if (perm === 'granted') {
+                    showToast('Notificaciones activadas', 'success');
+                    new Notification('LA ESQUINA', { body: 'Te avisaremos cuando un producto este por vencer', icon: 'icons/icon-192.png' });
+                } else if (perm === 'denied') {
+                    showToast('Notificaciones bloqueadas por el navegador', 'error');
+                }
+            });
+        }
+
+        function updateNotifStatusText() {
+            const el = document.getElementById('notifStatusText');
+            const btn = document.getElementById('btnEnableNotif');
+            if (!('Notification' in window)) {
+                el.textContent = 'No disponibles en este navegador';
+                btn.style.display = 'none';
+                return;
+            }
+            if (Notification.permission === 'granted') {
+                el.textContent = 'Activadas';
+                btn.innerHTML = '<i class="fas fa-check"></i> Activas';
+                btn.disabled = true;
+            } else if (Notification.permission === 'denied') {
+                el.textContent = 'Bloqueadas (revisa permisos del navegador)';
+                btn.style.display = 'none';
+            } else {
+                el.textContent = 'No activadas';
+                btn.style.display = 'inline-flex';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-bell"></i> Activar';
+            }
+        }
+
+        function getExpiringProducts() {
+            return products
+                .map(p => ({ ...p, days: getDaysLeft(p.expiryDate) }))
+                .filter(p => p.days <= alertSettings.threshold)
+                .sort((a, b) => a.days - b.days);
+        }
+
+        function renderAlertsList() {
+            const list = document.getElementById('alertsList');
+            const items = getExpiringProducts();
+
+            if (items.length === 0) {
+                list.innerHTML = `<div class="alert-empty"><i class="fas fa-circle-check"></i>No hay productos por vencer dentro de tu rango de alerta.</div>`;
+                return;
+            }
+
+            list.innerHTML = items.map(p => {
+                const type = p.days < 0 ? 'danger' : 'warning';
+                const label = p.days < 0 ? `Vencido hace ${Math.abs(p.days)} dias` : (p.days === 0 ? 'Vence hoy' : `Vence en ${p.days} dias`);
+                return `
+                    <div class="alert-item ${type}">
+                        <div>
+                            <div class="alert-item-name">${p.name}</div>
+                            <div class="alert-item-days">${label}</div>
+                        </div>
+                        <span class="badge badge-${type === 'danger' ? 'danger' : 'warning'}"><i class="fas ${type === 'danger' ? 'fa-skull-crossbones' : 'fa-exclamation-triangle'}"></i></span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateBellBadge() {
+            const count = getExpiringProducts().length;
+            const bellBadge = document.getElementById('bellBadge');
+            const navBadge = document.getElementById('navBadge');
+            [bellBadge, navBadge].forEach(el => {
+                if (!el) return;
+                if (count > 0) {
+                    el.textContent = count > 99 ? '99+' : count;
+                    el.style.display = 'flex';
+                } else {
+                    el.style.display = 'none';
+                }
+            });
+        }
+
+        // Revisa vencimientos al abrir la app: suena, muestra notificacion y actualiza la campana.
+        // Solo alerta una vez por dia para no repetir el aviso cada vez que se recarga la pantalla.
+        function checkExpiryAlerts(force) {
+            updateBellBadge();
+            const items = getExpiringProducts();
+            if (items.length === 0) return;
+
+            const todayKey = new Date().toDateString();
+            const lastAlertKey = localStorage.getItem('laEsquinaLastAlertDay');
+            if (!force && lastAlertKey === todayKey) return;
+            localStorage.setItem('laEsquinaLastAlertDay', todayKey);
+
+            if (alertSettings.sound) playAlertSound();
+
+            const bell = document.getElementById('bellBtn');
+            if (bell) { bell.classList.add('ringing'); setTimeout(() => bell.classList.remove('ringing'), 600); }
+
+            const vencidos = items.filter(p => p.days < 0).length;
+            const porVencer = items.length - vencidos;
+            let msg = '';
+            if (vencidos > 0) msg += `${vencidos} producto(s) vencido(s). `;
+            if (porVencer > 0) msg += `${porVencer} por vencer pronto.`;
+            showToast(msg.trim(), vencidos > 0 ? 'error' : 'info');
+
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('LA ESQUINA - Vencimientos', {
+                    body: msg.trim(),
+                    icon: 'icons/icon-192.png',
+                    tag: 'la-esquina-vencimientos'
+                });
+            }
+        }
+
+        // ===== NAVEGACION INFERIOR (mobile) =====
+        function setBottomNavActive(el) {
+            document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+            if (el) el.classList.add('active');
+        }
+
+        function scrollToProducts(el) {
+            setBottomNavActive(el);
+            const panel = document.querySelector('.control-panel');
+            if (panel) panel.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('headerDate').textContent = now.toLocaleDateString('es-AR', options);
+            document.getElementById('headerTime').textContent = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // ===== SINCRONIZACION =====
+        function generateRoomCode() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            for (let i = 0; i < 4; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            localStorage.setItem('laEsquinaRoomCode', code);
+            return code;
+        }
+
+        function initSync() {
+            document.getElementById('syncCodeDisplay').textContent = roomCode;
+
+            try {
+                broadcastChannel = new BroadcastChannel('la_esquina_sync_' + roomCode);
+                broadcastChannel.onmessage = (event) => {
+                    if (event.data.type === 'sync') {
+                        const remoteProducts = event.data.products;
+                        const remoteTimestamp = event.data.timestamp;
+                        const localTimestamp = parseInt(localStorage.getItem('laEsquinaLastUpdate') || '0');
+
+                        if (remoteTimestamp > localTimestamp) {
+                            products = remoteProducts;
+                            localStorage.setItem('laEsquinaProducts', JSON.stringify(products));
+                            localStorage.setItem('laEsquinaLastUpdate', remoteTimestamp.toString());
+                            applyFilters();
+                            updateStats();
+            updateBellBadge();
+                            updateChart();
+                            showToast('Datos sincronizados desde otra PC', 'sync');
+                        }
+                    }
+                };
+                isConnected = true;
+                document.getElementById('syncIndicator').classList.remove('offline');
+                document.getElementById('syncText').textContent = 'Sincronizado';
+            } catch (e) {
+                document.getElementById('syncIndicator').classList.add('offline');
+                document.getElementById('syncText').textContent = 'Modo Offline';
+            }
+
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'laEsquinaProducts') {
+                    products = JSON.parse(e.newValue || '[]');
+                    applyFilters();
+                    updateStats();
+            updateBellBadge();
+                    updateChart();
+                }
+            });
+        }
+
+        function broadcastUpdate() {
+            const timestamp = Date.now();
+            localStorage.setItem('laEsquinaLastUpdate', timestamp.toString());
+            localStorage.setItem('laEsquinaProducts', JSON.stringify(products));
+
+            if (broadcastChannel) {
+                broadcastChannel.postMessage({
+                    type: 'sync',
+                    products: products,
+                    timestamp: timestamp,
+                    room: roomCode
+                });
+            }
+        }
+
+        function joinRoom() {
+            const code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+            if (code.length !== 4) {
+                showToast('El codigo debe tener 4 caracteres', 'error');
+                return;
+            }
+
+            roomCode = code;
+            localStorage.setItem('laEsquinaRoomCode', roomCode);
+
+            if (broadcastChannel) {
+                broadcastChannel.close();
+            }
+
+            try {
+                broadcastChannel = new BroadcastChannel('la_esquina_sync_' + roomCode);
+                broadcastChannel.onmessage = (event) => {
+                    if (event.data.type === 'sync') {
+                        products = event.data.products;
+                        localStorage.setItem('laEsquinaProducts', JSON.stringify(products));
+                        localStorage.setItem('laEsquinaLastUpdate', event.data.timestamp.toString());
+                        applyFilters();
+                        updateStats();
+            updateBellBadge();
+                        updateChart();
+                        showToast('Datos sincronizados', 'sync');
+                    }
+                };
+
+                broadcastChannel.postMessage({
+                    type: 'sync',
+                    products: products,
+                    timestamp: Date.now(),
+                    room: roomCode
+                });
+
+                document.getElementById('syncCodeDisplay').textContent = roomCode;
+                document.getElementById('syncStatusRemote').className = 'sync-status connected';
+                document.getElementById('syncStatusRemote').innerHTML = '<i class="fas fa-link"></i> Conectado a sala ' + roomCode;
+                showToast('Conectado a sala ' + roomCode, 'success');
+            } catch (e) {
+                showToast('Error al conectar', 'error');
+            }
+        }
+
+        // ===== SINCRONIZACION MANUAL =====
+        function generateSyncCode() {
+            if (products.length === 0) {
+                showToast('No hay productos para sincronizar', 'error');
+                return;
+            }
+
+            const minimalData = products.map(p => ({
+                n: p.name,
+                c: p.code,
+                g: p.category,
+                d: p.expiryDate,
+                s: p.stock
+            }));
+
+            const jsonStr = JSON.stringify(minimalData);
+            const encoded = btoa(unescape(encodeURIComponent(jsonStr)));
+            const syncCode = 'ESQ|' + roomCode + '|' + encoded;
+
+            document.getElementById('manualSyncCode').textContent = syncCode;
+            showToast('Codigo generado. Copialo y compartilo.', 'success');
+        }
+
+        function copySyncCode() {
+            const code = document.getElementById('manualSyncCode').textContent;
+            if (code.includes('Hace clic')) {
+                showToast('Primero genera un codigo', 'error');
+                return;
+            }
+            navigator.clipboard.writeText(code).then(() => {
+                showToast('Codigo copiado al portapapeles', 'success');
+            }).catch(() => {
+                const textarea = document.createElement('textarea');
+                textarea.value = code;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                showToast('Codigo copiado al portapapeles', 'success');
+            });
+        }
+
+        function importSyncCode() {
+            const code = document.getElementById('importSyncCode').value.trim();
+            if (!code.startsWith('ESQ|')) {
+                showToast('El codigo no es valido. Debe empezar con ESQ|', 'error');
+                return;
+            }
+
+            try {
+                const parts = code.split('|');
+                const encoded = parts[2];
+                const decoded = decodeURIComponent(escape(atob(encoded)));
+                const minimalData = JSON.parse(decoded);
+
+                products = minimalData.map(p => ({
+                    id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 5),
+                    name: p.n,
+                    code: p.c,
+                    category: p.g,
+                    expiryDate: p.d,
+                    stock: p.s
+                }));
+
+                saveData();
+                broadcastUpdate();
+                updateCategories();
+                applyFilters();
+                showToast('Datos importados correctamente. ' + products.length + ' productos cargados.', 'success');
+                document.getElementById('importSyncCode').value = '';
+            } catch (e) {
+                showToast('Error al importar el codigo. Verifica que este completo.', 'error');
+            }
+        }
+
+        // ===== BUSQUEDA AUTOMATICA (3 LETRAS) =====
+        function handleSearch() {
+            const query = document.getElementById('searchInput').value.trim().toLowerCase();
+            if (query.length === 0) {
+                applyFilters();
+                return;
+            }
+            if (query.length >= 3) {
+                applyFilters();
+            }
+        }
+
+        // ===== FILTROS =====
+        function applyFilters() {
+            const query = document.getElementById('searchInput').value.trim().toLowerCase();
+            const status = document.getElementById('filterStatus').value;
+            const category = document.getElementById('filterCategory').value;
+            const sort = document.getElementById('sortBy').value;
+
+            filteredProducts = products.filter(p => {
+                const matchesSearch = query.length < 3 || 
+                    p.name.toLowerCase().includes(query) || 
+                    (p.code && p.code.toLowerCase().includes(query));
+
+                const statusInfo = getStatusInfo(p.expiryDate);
+                const matchesStatus = !status || statusInfo.type === status;
+                const matchesCategory = !category || p.category === category;
+
+                return matchesSearch && matchesStatus && matchesCategory;
+            });
+
+            filteredProducts.sort((a, b) => {
+                switch(sort) {
+                    case 'name': return a.name.localeCompare(b.name);
+                    case 'date': return new Date(a.expiryDate) - new Date(b.expiryDate);
+                    case 'category': return a.category.localeCompare(b.category);
+                    case 'days': default:
+                        const da = getDaysLeft(a.expiryDate);
+                        const db = getDaysLeft(b.expiryDate);
+                        return da - db;
+                }
+            });
+
+            currentPage = 1;
+            renderTable();
+            updateStats();
+            updateBellBadge();
+            updateChart();
+        }
+
+        // ===== RENDER TABLA =====
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const emptyState = document.getElementById('emptyState');
+            const table = document.getElementById('productsTable');
+            const pagination = document.getElementById('pagination');
+
+            if (products.length === 0) {
+                emptyState.style.display = 'block';
+                table.style.display = 'none';
+                pagination.style.display = 'none';
+                return;
+            }
+
+            if (filteredProducts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--gris);"><i class="fas fa-search" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>No se encontraron productos con esos filtros</td></tr>`;
+                table.style.display = 'table';
+                emptyState.style.display = 'none';
+                pagination.style.display = 'none';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            table.style.display = 'table';
+            pagination.style.display = 'flex';
+
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pageItems = filteredProducts.slice(start, end);
+
+            tbody.innerHTML = pageItems.map(p => {
+                const status = getStatusInfo(p.expiryDate);
+                const days = getDaysLeft(p.expiryDate);
+                const progressWidth = Math.max(0, Math.min(100, (days / 30) * 100));
+
+                return `
+                    <tr>
+                        <td data-label=""><div class="custom-checkbox" onclick="toggleCheckbox(this, '${p.id}')"></div></td>
+                        <td data-label="Producto">
+                            <div class="product-name">${p.name}</div>
+                            <div class="product-code">${p.code || 'Sin codigo'}</div>
+                        </td>
+                        <td data-label="Categoria"><span class="category-tag">${p.category}</span></td>
+                        <td data-label="Vencimiento">${formatDate(p.expiryDate)}</td>
+                        <td data-label="Dias Rest.">
+                            <span class="days-left ${status.type}">${days} dias</span>
+                            <div class="progress-bar" style="max-width:100px;">
+                                <div class="progress-fill ${status.type}" style="width: ${progressWidth}%"></div>
+                            </div>
+                        </td>
+                        <td data-label="Estado"><span class="badge badge-${status.type}"><i class="fas ${status.icon}"></i> ${status.label}</span></td>
+                        <td data-label="Acciones">
+                            <div class="action-btns">
+                                <button class="btn-icon btn-icon-edit" onclick="editProduct('${p.id}')" title="Editar"><i class="fas fa-pen"></i></button>
+                                <button class="btn-icon btn-icon-delete" onclick="deleteProduct('${p.id}')" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+            const pageNumbers = document.getElementById('pageNumbers');
+
+            document.getElementById('btnPrev').disabled = currentPage === 1;
+            document.getElementById('btnNext').disabled = currentPage === totalPages || totalPages === 0;
+
+            let html = '';
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                    html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+                } else if (i === currentPage - 2 || i === currentPage + 2) {
+                    html += `<span style="color: var(--gris); padding: 0 5px;">...</span>`;
+                }
+            }
+            pageNumbers.innerHTML = html;
+        }
+
+        function changePage(dir) {
+            const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+            currentPage = Math.max(1, Math.min(totalPages, currentPage + dir));
+            renderTable();
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            renderTable();
+        }
+
+        // ===== ESTADO Y DIAS =====
+        function getDaysLeft(dateStr) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const expiry = new Date(dateStr);
+            expiry.setHours(0, 0, 0, 0);
+            const diff = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+            return diff;
+        }
+
+        function getStatusInfo(dateStr) {
+            const days = getDaysLeft(dateStr);
+            if (days < 0) return { type: 'danger', label: 'Vencido', icon: 'fa-skull-crossbones' };
+            if (days <= 7) return { type: 'warning', label: 'Por Vencer', icon: 'fa-exclamation-triangle' };
+            return { type: 'ok', label: 'Buen Estado', icon: 'fa-check-circle' };
+        }
+
+        function formatDate(dateStr) {
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+
+        // ===== ESTADISTICAS =====
+        function updateStats() {
+            const total = products.length;
+            let ok = 0, warning = 0, danger = 0;
+
+            products.forEach(p => {
+                const status = getStatusInfo(p.expiryDate);
+                if (status.type === 'ok') ok++;
+                else if (status.type === 'warning') warning++;
+                else danger++;
+            });
+
+            animateNumber('statTotal', total);
+            animateNumber('statOk', ok);
+            animateNumber('statWarning', warning);
+            animateNumber('statDanger', danger);
+        }
+
+        function animateNumber(id, target) {
+            const el = document.getElementById(id);
+            const current = parseInt(el.textContent) || 0;
+            if (current === target) return;
+
+            const step = target > current ? 1 : -1;
+            const duration = 500;
+            const steps = Math.abs(target - current);
+            const interval = duration / Math.max(steps, 1);
+
+            let val = current;
+            const timer = setInterval(() => {
+                val += step;
+                el.textContent = val;
+                if (val === target) clearInterval(timer);
+            }, interval);
+        }
+
+        // ===== GRAFICO (CENTRADO) =====
+        function updateChart() {
+            const canvas = document.getElementById('statusChart');
+            const ctx = canvas.getContext('2d');
+
+            let ok = 0, warning = 0, danger = 0;
+            products.forEach(p => {
+                const status = getStatusInfo(p.expiryDate);
+                if (status.type === 'ok') ok++;
+                else if (status.type === 'warning') warning++;
+                else danger++;
+            });
+
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
+
+            const wrapper = canvas.parentElement;
+            canvas.width = wrapper.clientWidth;
+            canvas.height = wrapper.clientHeight;
+
+            if (products.length === 0) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.font = '600 16px Poppins';
+                ctx.fillStyle = '#94a3b8';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('No hay datos para mostrar', canvas.width / 2, canvas.height / 2);
+                return;
+            }
+
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Buen Estado', 'Por Vencer', 'Vencidos'],
+                    datasets: [{
+                        data: [ok, warning, danger],
+                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                        borderWidth: 0,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '60%',
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                font: { family: 'Poppins', size: 14, weight: '600' },
+                                padding: 25,
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                boxWidth: 14
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleFont: { family: 'Poppins', size: 14 },
+                            bodyFont: { family: 'Poppins', size: 13 },
+                            padding: 14,
+                            cornerRadius: 12,
+                            displayColors: true
+                        }
+                    },
+                    layout: { padding: 20 }
+                }
+            });
+        }
+
+        // ===== MODALES =====
+        function openModal(type) {
+            if (type === 'add') {
+                editingId = null;
+                document.getElementById('modalTitle').innerHTML = '<i class="fas fa-plus-circle" style="color: var(--azul-primario); margin-right: 10px;"></i>Agregar Producto';
+                document.getElementById('prodName').value = '';
+                document.getElementById('prodCode').value = '';
+                document.getElementById('prodCategory').value = 'Bebidas';
+                document.getElementById('prodDate').value = '';
+                document.getElementById('prodStock').value = '';
+                document.getElementById('modalProduct').classList.add('active');
+            } else if (type === 'import') {
+                document.getElementById('modalImport').classList.add('active');
+            } else if (type === 'sync') {
+                document.getElementById('syncCodeDisplay').textContent = roomCode;
+                document.getElementById('modalSync').classList.add('active');
+            } else if (type === 'alerts') {
+                document.getElementById('alertThreshold').value = alertSettings.threshold;
+                document.getElementById('alertSoundToggle').checked = alertSettings.sound;
+                updateNotifStatusText();
+                renderAlertsList();
+                document.getElementById('modalAlerts').classList.add('active');
+            }
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        // ===== GUARDAR PRODUCTO =====
+        function saveProduct() {
+            const name = document.getElementById('prodName').value.trim();
+            const code = document.getElementById('prodCode').value.trim();
+            const category = document.getElementById('prodCategory').value;
+            const date = document.getElementById('prodDate').value;
+            const stock = document.getElementById('prodStock').value;
+
+            if (!name || !date) {
+                showToast('Completa el nombre y la fecha de vencimiento', 'error');
+                return;
+            }
+
+            const product = {
+                id: editingId || Date.now().toString(),
+                name,
+                code: code || 'N/A',
+                category,
+                expiryDate: date,
+                stock: stock || 0
+            };
+
+            if (editingId) {
+                const idx = products.findIndex(p => p.id === editingId);
+                products[idx] = product;
+                showToast('Producto actualizado correctamente', 'success');
+            } else {
+                products.push(product);
+                showToast('Producto agregado correctamente', 'success');
+            }
+
+            saveData();
+            broadcastUpdate();
+            closeModal('modalProduct');
+            updateCategories();
+            applyFilters();
+        }
+
+        function editProduct(id) {
+            const p = products.find(x => x.id === id);
+            if (!p) return;
+            editingId = id;
+            document.getElementById('modalTitle').innerHTML = '<i class="fas fa-edit" style="color: var(--azul-primario); margin-right: 10px;"></i>Editar Producto';
+            document.getElementById('prodName').value = p.name;
+            document.getElementById('prodCode').value = p.code;
+            document.getElementById('prodCategory').value = p.category;
+            document.getElementById('prodDate').value = p.expiryDate;
+            document.getElementById('prodStock').value = p.stock;
+            document.getElementById('modalProduct').classList.add('active');
+        }
+
+        function deleteProduct(id) {
+            if (!confirm('Estas seguro de que queres eliminar este producto?')) return;
+            products = products.filter(p => p.id !== id);
+            saveData();
+            broadcastUpdate();
+            updateCategories();
+            applyFilters();
+            showToast('Producto eliminado', 'info');
+        }
+
+        // ===== IMPORTAR EXCEL =====
+        function handleFile(event) {
+            const file = event.target.files[0];
+            if (file) processFile(file);
+        }
+
+        function processFile(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+                    if (jsonData.length < 2) {
+                        showToast('El archivo parece estar vacio', 'error');
+                        return;
+                    }
+
+                    const headers = jsonData[0].map(h => h.toString().toLowerCase().trim());
+                    const nameIdx = headers.findIndex(h => h.includes('nombre') || h.includes('producto') || h.includes('name'));
+                    const codeIdx = headers.findIndex(h => h.includes('codigo') || h.includes('sku') || h.includes('code'));
+                    const catIdx = headers.findIndex(h => h.includes('categoria') || h.includes('category') || h.includes('tipo'));
+                    const dateIdx = headers.findIndex(h => h.includes('vencimiento') || h.includes('fecha') || h.includes('expir') || h.includes('date'));
+                    const stockIdx = headers.findIndex(h => h.includes('stock') || h.includes('cantidad') || h.includes('quantity'));
+
+                    let imported = 0;
+                    for (let i = 1; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        if (!row[nameIdx >= 0 ? nameIdx : 0]) continue;
+
+                        const rawDate = row[dateIdx >= 0 ? dateIdx : 3];
+                        let parsedDate = '';
+                        if (rawDate) {
+                            if (typeof rawDate === 'number') {
+                                const excelEpoch = new Date(1899, 11, 30);
+                                const dateObj = new Date(excelEpoch.getTime() + rawDate * 86400000);
+                                parsedDate = dateObj.toISOString().split('T')[0];
+                            } else if (typeof rawDate === 'string') {
+                                const parts = rawDate.split(/[\/\-\.]/);
+                                if (parts.length === 3) {
+                                    const d = parseInt(parts[0]);
+                                    const m = parseInt(parts[1]);
+                                    const y = parseInt(parts[2]);
+                                    parsedDate = y + '-' + String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+                                }
+                            }
+                        }
+
+                        products.push({
+                            id: Date.now().toString() + '_' + i,
+                            name: String(row[nameIdx >= 0 ? nameIdx : 0] || 'Sin nombre'),
+                            code: String(row[codeIdx >= 0 ? codeIdx : 1] || 'N/A'),
+                            category: String(row[catIdx >= 0 ? catIdx : 2] || 'Otros'),
+                            expiryDate: parsedDate || new Date().toISOString().split('T')[0],
+                            stock: parseInt(row[stockIdx >= 0 ? stockIdx : 4]) || 0
+                        });
+                        imported++;
+                    }
+
+                    saveData();
+                    broadcastUpdate();
+                    updateCategories();
+                    applyFilters();
+                    closeModal('modalImport');
+                    showToast(imported + ' productos importados correctamente', 'success');
+                    document.getElementById('fileInput').value = '';
+
+                } catch (err) {
+                    showToast('Error al procesar el archivo: ' + err.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // ===== EXPORTAR PDF =====
+        function exportToPDF() {
+            if (products.length === 0) {
+                showToast('No hay productos para exportar', 'error');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFontSize(20);
+            doc.setTextColor(26, 86, 219);
+            doc.text('LA ESQUINA - Control de Vencimientos', 14, 20);
+
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Generado: ' + new Date().toLocaleString('es-AR'), 14, 30);
+
+            let y = 45;
+            doc.setFontSize(11);
+            doc.setTextColor(30, 30, 30);
+
+            const items = filteredProducts.length > 0 ? filteredProducts : products;
+
+            items.forEach((p, i) => {
+                if (y > 270) { doc.addPage(); y = 20; }
+                const status = getStatusInfo(p.expiryDate);
+                const days = getDaysLeft(p.expiryDate);
+
+                doc.setTextColor(26, 86, 219);
+                doc.text((i+1) + '. ' + p.name, 14, y);
+                doc.setTextColor(80, 80, 80);
+                doc.text('Codigo: ' + p.code + ' | Categoria: ' + p.category + ' | Vence: ' + formatDate(p.expiryDate) + ' | ' + days + ' dias', 14, y + 6);
+
+                let statusColor = [16, 185, 129];
+                if (status.type === 'warning') statusColor = [245, 158, 11];
+                if (status.type === 'danger') statusColor = [239, 68, 68];
+                doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+                doc.text('Estado: ' + status.label, 14, y + 12);
+
+                y += 22;
+            });
+
+            doc.save('LA_ESQUINA_Vencimientos_' + new Date().toISOString().split('T')[0] + '.pdf');
+            showToast('PDF exportado correctamente', 'success');
+        }
+
+        // ===== CATEGORIAS =====
+        function updateCategories() {
+            const cats = [...new Set(products.map(p => p.category))].sort();
+            const select = document.getElementById('filterCategory');
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">Todas</option>' + 
+                cats.map(c => '<option value="' + c + '">' + c + '</option>').join('');
+            select.value = currentVal;
+        }
+
+        // ===== CHECKBOXES =====
+        function toggleSelectAll() {
+            const checkboxes = document.querySelectorAll('.custom-checkbox');
+            const allChecked = document.getElementById('selectAll').checked;
+            checkboxes.forEach(cb => {
+                cb.classList.toggle('checked', allChecked);
+                cb.innerHTML = allChecked ? '<i class="fas fa-check"></i>' : '';
+            });
+        }
+
+        function toggleCheckbox(el, id) {
+            el.classList.toggle('checked');
+            el.innerHTML = el.classList.contains('checked') ? '<i class="fas fa-check"></i>' : '';
+        }
+
+        // ===== PERSISTENCIA =====
+        function saveData() {
+            localStorage.setItem('laEsquinaProducts', JSON.stringify(products));
+            localStorage.setItem('laEsquinaLastUpdate', Date.now().toString());
+        }
+
+        // ===== TOAST =====
+        function showToast(message, type) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+
+            const icons = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle', sync: 'fa-sync-alt' };
+            toast.innerHTML = '<i class="fas ' + icons[type] + '"></i> ' + message;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Cerrar modales con Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal('modalProduct');
+                closeModal('modalImport');
+                closeModal('modalSync');
+            }
+        });
+
+        // Cerrar modal al hacer clic fuera
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) closeModal(overlay.id);
+            });
+        });
+
+        // Redimensionar grafico al cambiar tamano de ventana
+        window.addEventListener('resize', () => {
+            if (chartInstance) {
+                updateChart();
+            }
+        });
+    </script>
+</body>
+</html>
