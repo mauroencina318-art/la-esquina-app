@@ -222,11 +222,21 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            cursor: pointer;
         }
 
         .stat-card:hover {
             transform: translateY(-5px);
             box-shadow: var(--sombra-hover);
+        }
+
+        .stat-card:active {
+            transform: translateY(-2px) scale(0.98);
+        }
+
+        .stat-card.active-filter {
+            outline: 3px solid var(--azul-primario);
+            outline-offset: -3px;
         }
 
         .stat-card::before {
@@ -817,7 +827,8 @@
             .header-content { flex-direction: column; gap: 12px; align-items: flex-start; }
             .header-stats { width: 100%; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; scrollbar-width: none; }
             .header-stats::-webkit-scrollbar { display: none; }
-            .stat-pill { flex-shrink: 0; }
+            .stat-pill { flex-shrink: 0; padding: 8px 14px; font-size: 12px; white-space: nowrap; }
+            .bell-btn { flex-shrink: 0; width: 38px; height: 38px; }
             .logo-icon { width: 46px; height: 46px; font-size: 20px; }
             .logo-text h1 { font-size: 22px; letter-spacing: 1px; }
             .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
@@ -869,6 +880,14 @@
 
         @media (min-width: 769px) {
             .bottom-nav { display: none !important; }
+        }
+
+        /* Celulares angostos (iPhone SE, Android chicos): compactamos mas la barra de fecha/hora */
+        @media (max-width: 400px) {
+            .stat-pill { padding: 7px 10px; font-size: 11px; gap: 5px; }
+            .sync-label { display: none; }
+            .bell-btn { width: 34px; height: 34px; font-size: 13px; }
+            .header-stats { gap: 8px !important; }
         }
 
         ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -1013,7 +1032,7 @@
             <div class="header-stats">
                 <div class="stat-pill" id="syncPill" style="cursor: pointer;" onclick="openModal('sync')" title="Clic para sincronizar">
                     <span class="sync-indicator" id="syncIndicator"></span>
-                    <span id="syncText">Sincronizado</span>
+                    <span class="sync-label" id="syncText">Sincronizado</span>
                 </div>
                 <div class="stat-pill">
                     <i class="fas fa-calendar-day"></i>
@@ -1034,22 +1053,22 @@
     <div class="container">
         <!-- ===== TARJETAS RESUMEN ===== -->
         <div class="stats-grid">
-            <div class="stat-card total">
+            <div class="stat-card total" onclick="filterByStatusCard('')" title="Ver todos los productos">
                 <div class="stat-card-icon"><i class="fas fa-boxes"></i></div>
                 <h3 id="statTotal">0</h3>
                 <p>Productos Totales</p>
             </div>
-            <div class="stat-card ok">
+            <div class="stat-card ok" onclick="filterByStatusCard('ok')" title="Ver productos en buen estado">
                 <div class="stat-card-icon"><i class="fas fa-check-circle"></i></div>
                 <h3 id="statOk">0</h3>
                 <p>En Buen Estado</p>
             </div>
-            <div class="stat-card warning">
+            <div class="stat-card warning" onclick="filterByStatusCard('warning')" title="Ver productos por vencer">
                 <div class="stat-card-icon"><i class="fas fa-exclamation-triangle"></i></div>
                 <h3 id="statWarning">0</h3>
                 <p>Por Vencer (7 dias)</p>
             </div>
-            <div class="stat-card danger">
+            <div class="stat-card danger" onclick="filterByStatusCard('danger')" title="Ver productos vencidos">
                 <div class="stat-card-icon"><i class="fas fa-skull-crossbones"></i></div>
                 <h3 id="statDanger">0</h3>
                 <p>Vencidos</p>
@@ -1626,10 +1645,30 @@
             if (panel) panel.scrollIntoView({ behavior: 'smooth' });
         }
 
+        // Al tocar una tarjeta de estadisticas (Total / Buen Estado / Por Vencer / Vencidos),
+        // filtra la lista de productos por ese estado y hace scroll hasta el listado.
+        function filterByStatusCard(status) {
+            document.getElementById('filterStatus').value = status;
+            applyFilters();
+
+            document.querySelectorAll('.stat-card').forEach(card => card.classList.remove('active-filter'));
+            event.currentTarget.classList.add('active-filter');
+
+            const panel = document.querySelector('.control-panel');
+            if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
         function updateClock() {
             const now = new Date();
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            document.getElementById('headerDate').textContent = now.toLocaleDateString('es-AR', options);
+            // En pantallas chicas (celular) usamos una fecha mas corta para que entre completa sin cortarse
+            const width = window.innerWidth;
+            const isMobile = width <= 480;
+            const options = isMobile
+                ? { day: 'numeric', month: 'short' }
+                : { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            let dateText = now.toLocaleDateString('es-AR', options);
+            if (isMobile) dateText = dateText.replace('.', '');
+            document.getElementById('headerDate').textContent = dateText;
             document.getElementById('headerTime').textContent = now.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
         }
 
