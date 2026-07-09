@@ -1393,6 +1393,27 @@
         // ===== ALERTAS Y NOTIFICACIONES =====
         let alertSettings = JSON.parse(localStorage.getItem('laEsquinaAlertSettings')) || { threshold: 7, sound: true };
         let audioCtx = null;
+        let audioUnlocked = false;
+        let pendingSoundAlert = false;
+
+        // Los celulares bloquean cualquier sonido que no venga de un toque del usuario.
+        // Este listener "destraba" el audio en el primer toque/click que haga la persona,
+        // y si habia una alerta de sonido pendiente (porque sono sola al abrir la app), la reproduce ahi.
+        function unlockAudio() {
+            if (audioUnlocked) return;
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                audioUnlocked = true;
+                if (pendingSoundAlert) {
+                    pendingSoundAlert = false;
+                    playAlertSound();
+                }
+            } catch (e) { /* audio no disponible */ }
+        }
+        ['touchstart', 'click', 'keydown'].forEach(evt => {
+            document.addEventListener(evt, unlockAudio, { once: true, passive: true });
+        });
 
         // ===== INICIALIZACION =====
         document.addEventListener('DOMContentLoaded', function() {
@@ -1569,7 +1590,10 @@
             if (!force && lastAlertKey === todayKey) return;
             localStorage.setItem('laEsquinaLastAlertDay', todayKey);
 
-            if (alertSettings.sound) playAlertSound();
+            if (alertSettings.sound) {
+                if (audioUnlocked) playAlertSound();
+                else pendingSoundAlert = true;
+            }
 
             const bell = document.getElementById('bellBtn');
             if (bell) { bell.classList.add('ringing'); setTimeout(() => bell.classList.remove('ringing'), 600); }
@@ -1620,9 +1644,60 @@
             return code;
         }
 
+        // ===== SINCRONIZACION EN LA NUBE (funciona entre celular, PC, cualquier dispositivo) =====
+        let cloudSyncInterval = null;
+
+        function startCloudSync() {
+            if (cloudSyncInterval) clearInterval(cloudSyncInterval);
+            pullFromCloud(true);
+            cloudSyncInterval = setInterval(() => pullFromCloud(true), 15000);
+        }
+
+        async function pushToCloud() {
+            try {
+                const timestamp = parseInt(localStorage.getItem('laEsquinaLastUpdate') || Date.now().toString());
+                await fetch('/api/sync?room=' + encodeURIComponent(roomCode), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ products, timestamp })
+                });
+                document.getElementById('syncIndicator').classList.remove('offline');
+                document.getElementById('syncText').textContent = 'Sincronizado';
+            } catch (e) {
+                document.getElementById('syncIndicator').classList.add('offline');
+                document.getElementById('syncText').textContent = 'Sin conexion';
+            }
+        }
+
+        async function pullFromCloud(silent) {
+            try {
+                const res = await fetch('/api/sync?room=' + encodeURIComponent(roomCode));
+                if (!res.ok) throw new Error('bad response');
+                const data = await res.json();
+                const localTimestamp = parseInt(localStorage.getItem('laEsquinaLastUpdate') || '0');
+
+                if (data.timestamp && data.timestamp > localTimestamp) {
+                    products = data.products || [];
+                    localStorage.setItem('laEsquinaProducts', JSON.stringify(products));
+                    localStorage.setItem('laEsquinaLastUpdate', data.timestamp.toString());
+                    applyFilters();
+                    updateStats();
+                    updateBellBadge();
+                    updateChart();
+                    if (!silent) showToast('Datos sincronizados desde la nube', 'sync');
+                }
+                document.getElementById('syncIndicator').classList.remove('offline');
+                document.getElementById('syncText').textContent = 'Sincronizado';
+            } catch (e) {
+                document.getElementById('syncIndicator').classList.add('offline');
+                document.getElementById('syncText').textContent = 'Sin conexion';
+            }
+        }
+
         function initSync() {
             document.getElementById('syncCodeDisplay').textContent = roomCode;
 
+            // BroadcastChannel: sincroniza al instante entre pestañas del MISMO navegador/dispositivo
             try {
                 broadcastChannel = new BroadcastChannel('la_esquina_sync_' + roomCode);
                 broadcastChannel.onmessage = (event) => {
@@ -1637,29 +1712,27 @@
                             localStorage.setItem('laEsquinaLastUpdate', remoteTimestamp.toString());
                             applyFilters();
                             updateStats();
-            updateBellBadge();
+                            updateBellBadge();
                             updateChart();
-                            showToast('Datos sincronizados desde otra PC', 'sync');
+                            showToast('Datos sincronizados desde otra pestaña', 'sync');
                         }
                     }
                 };
                 isConnected = true;
-                document.getElementById('syncIndicator').classList.remove('offline');
-                document.getElementById('syncText').textContent = 'Sincronizado';
-            } catch (e) {
-                document.getElementById('syncIndicator').classList.add('offline');
-                document.getElementById('syncText').textContent = 'Modo Offline';
-            }
+            } catch (e) { /* BroadcastChannel no disponible, no pasa nada, la nube sigue funcionando */ }
 
             window.addEventListener('storage', (e) => {
                 if (e.key === 'laEsquinaProducts') {
                     products = JSON.parse(e.newValue || '[]');
                     applyFilters();
                     updateStats();
-            updateBellBadge();
+                    updateBellBadge();
                     updateChart();
                 }
             });
+
+            // Sincronizacion real entre dispositivos distintos (celular, PC, etc.)
+            startCloudSync();
         }
 
         function broadcastUpdate() {
@@ -1675,9 +1748,11 @@
                     room: roomCode
                 });
             }
+
+            pushToCloud();
         }
 
-        function joinRoom() {
+        async function joinRoom() {
             const code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
             if (code.length !== 4) {
                 showToast('El codigo debe tener 4 caracteres', 'error');
@@ -1686,6 +1761,7 @@
 
             roomCode = code;
             localStorage.setItem('laEsquinaRoomCode', roomCode);
+            localStorage.setItem('laEsquinaLastUpdate', '0'); // fuerza a traer lo que haya en la nube para esa sala
 
             if (broadcastChannel) {
                 broadcastChannel.close();
@@ -1700,26 +1776,25 @@
                         localStorage.setItem('laEsquinaLastUpdate', event.data.timestamp.toString());
                         applyFilters();
                         updateStats();
-            updateBellBadge();
+                        updateBellBadge();
                         updateChart();
                         showToast('Datos sincronizados', 'sync');
                     }
                 };
+            } catch (e) { /* BroadcastChannel no disponible, no pasa nada, la nube sigue funcionando */ }
 
-                broadcastChannel.postMessage({
-                    type: 'sync',
-                    products: products,
-                    timestamp: Date.now(),
-                    room: roomCode
-                });
+            document.getElementById('syncCodeDisplay').textContent = roomCode;
 
-                document.getElementById('syncCodeDisplay').textContent = roomCode;
-                document.getElementById('syncStatusRemote').className = 'sync-status connected';
-                document.getElementById('syncStatusRemote').innerHTML = '<i class="fas fa-link"></i> Conectado a sala ' + roomCode;
-                showToast('Conectado a sala ' + roomCode, 'success');
-            } catch (e) {
-                showToast('Error al conectar', 'error');
-            }
+            // Trae lo que haya guardado en la nube para esta sala
+            await pullFromCloud(true);
+            // Si la sala estaba vacia, sube lo que tenias localmente para "crearla"
+            if (products.length > 0) pushToCloud();
+
+            startCloudSync();
+
+            document.getElementById('syncStatusRemote').className = 'sync-status connected';
+            document.getElementById('syncStatusRemote').innerHTML = '<i class="fas fa-link"></i> Conectado a sala ' + roomCode;
+            showToast('Conectado a sala ' + roomCode, 'success');
         }
 
         // ===== SINCRONIZACION MANUAL =====
