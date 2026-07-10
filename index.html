@@ -2299,12 +2299,17 @@
                         return;
                     }
 
-                    const headers = jsonData[0].map(h => h.toString().toLowerCase().trim());
-                    const nameIdx = headers.findIndex(h => h.includes('nombre') || h.includes('producto') || h.includes('name'));
+                    // Quita tildes/acentos para poder reconocer encabezados como "Categoría", "Código", etc.
+                    // sin importar si el Excel los escribio con o sin tilde.
+                    const normalizeHeader = (h) => h.toString().toLowerCase().trim()
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+                    const headers = jsonData[0].map(h => normalizeHeader(h));
+                    const nameIdx = headers.findIndex(h => h.includes('nombre') || h.includes('producto') || h.includes('descripcion') || h.includes('articulo') || h.includes('item') || h.includes('name'));
                     const codeIdx = headers.findIndex(h => h.includes('codigo') || h.includes('sku') || h.includes('code'));
-                    const catIdx = headers.findIndex(h => h.includes('categoria') || h.includes('category') || h.includes('tipo'));
-                    const dateIdx = headers.findIndex(h => h.includes('vencimiento') || h.includes('fecha') || h.includes('expir') || h.includes('date'));
-                    const stockIdx = headers.findIndex(h => h.includes('stock') || h.includes('cantidad') || h.includes('quantity'));
+                    const catIdx = headers.findIndex(h => h.includes('categoria') || h.includes('category') || h.includes('tipo') || h.includes('rubro'));
+                    const dateIdx = headers.findIndex(h => h.includes('vencimiento') || h.includes('fecha') || h.includes('caducidad') || h.includes('expir') || h.includes('date'));
+                    const stockIdx = headers.findIndex(h => h.includes('stock') || h.includes('cantidad') || h.includes('existencia') || h.includes('quantity'));
 
                     let imported = 0;
                     for (let i = 1; i < jsonData.length; i++) {
