@@ -1402,7 +1402,7 @@
         let products = JSON.parse(localStorage.getItem('laEsquinaProducts')) || [];
         let filteredProducts = [];
         let currentPage = 1;
-        const itemsPerPage = 10;
+        const itemsPerPage = 20;
         let editingId = null;
         let chartInstance = null;
         let broadcastChannel = null;
@@ -1719,7 +1719,7 @@
                     products = data.products || [];
                     localStorage.setItem('laEsquinaProducts', JSON.stringify(products));
                     localStorage.setItem('laEsquinaLastUpdate', data.timestamp.toString());
-                    applyFilters();
+                    applyFilters(false);
                     updateStats();
                     updateBellBadge();
                     updateChart();
@@ -1749,7 +1749,7 @@
                             products = remoteProducts;
                             localStorage.setItem('laEsquinaProducts', JSON.stringify(products));
                             localStorage.setItem('laEsquinaLastUpdate', remoteTimestamp.toString());
-                            applyFilters();
+                            applyFilters(false);
                             updateStats();
                             updateBellBadge();
                             updateChart();
@@ -1763,7 +1763,7 @@
             window.addEventListener('storage', (e) => {
                 if (e.key === 'laEsquinaProducts') {
                     products = JSON.parse(e.newValue || '[]');
-                    applyFilters();
+                    applyFilters(false);
                     updateStats();
                     updateBellBadge();
                     updateChart();
@@ -1813,7 +1813,7 @@
                         products = event.data.products;
                         localStorage.setItem('laEsquinaProducts', JSON.stringify(products));
                         localStorage.setItem('laEsquinaLastUpdate', event.data.timestamp.toString());
-                        applyFilters();
+                        applyFilters(false);
                         updateStats();
                         updateBellBadge();
                         updateChart();
@@ -1903,7 +1903,7 @@
                 saveData();
                 broadcastUpdate();
                 updateCategories();
-                applyFilters();
+                applyFilters(false);
                 showToast('Datos importados correctamente. ' + products.length + ' productos cargados.', 'success');
                 document.getElementById('importSyncCode').value = '';
             } catch (e) {
@@ -1924,7 +1924,7 @@
         }
 
         // ===== FILTROS =====
-        function applyFilters() {
+        function applyFilters(resetPage = true) {
             const query = document.getElementById('searchInput').value.trim().toLowerCase();
             const status = document.getElementById('filterStatus').value;
             const category = document.getElementById('filterCategory').value;
@@ -1954,7 +1954,7 @@
                 }
             });
 
-            currentPage = 1;
+            if (resetPage) currentPage = 1;
             renderTable();
             updateStats();
             updateBellBadge();
@@ -1986,6 +1986,11 @@
             emptyState.style.display = 'none';
             table.style.display = 'table';
             pagination.style.display = 'flex';
+
+            // Si al eliminar productos la pagina actual quedo "vacia" (por ejemplo,
+            // eliminaste el unico producto de la pagina 5), retrocede a la ultima pagina valida.
+            const totalPages = Math.max(1, Math.ceil(filteredProducts.length / itemsPerPage));
+            if (currentPage > totalPages) currentPage = totalPages;
 
             const start = (currentPage - 1) * itemsPerPage;
             const end = start + itemsPerPage;
@@ -2248,7 +2253,7 @@
             broadcastUpdate();
             closeModal('modalProduct');
             updateCategories();
-            applyFilters();
+            applyFilters(false);
         }
 
         function editProduct(id) {
@@ -2270,7 +2275,7 @@
             saveData();
             broadcastUpdate();
             updateCategories();
-            applyFilters();
+            applyFilters(false);
             showToast('Producto eliminado', 'info');
         }
 
@@ -2338,7 +2343,7 @@
                     saveData();
                     broadcastUpdate();
                     updateCategories();
-                    applyFilters();
+                    applyFilters(false);
                     closeModal('modalImport');
                     showToast(imported + ' productos importados correctamente', 'success');
                     document.getElementById('fileInput').value = '';
